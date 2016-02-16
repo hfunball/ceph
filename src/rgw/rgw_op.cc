@@ -2411,6 +2411,10 @@ void RGWPutObj::execute()
     if (!len)
       break;
 
+    if (need_calc_md5) {
+      hash.Update((const byte *)data.c_str(), data.length());
+    }
+
     /* do we need this operation to be synchronous? if we're dealing with an object with immutable
      * head, e.g., multipart object we need to make sure we're the first one writing to this object
      */
@@ -2502,9 +2506,9 @@ void RGWPutObj::execute()
     goto done;
   }
 
-  if (need_calc_md5) {
-    processor->complete_hash(&hash);
-  }
+  // if (need_calc_md5) {
+  //   processor->complete_hash(&hash);
+  // }
   hash.Final(m);
 
   buf_to_hex(m, CEPH_CRYPTO_MD5_DIGESTSIZE, calc_md5);
