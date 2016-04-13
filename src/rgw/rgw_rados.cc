@@ -2288,9 +2288,14 @@ int RGWPutObjProcessor_Atomic::handle_data(bufferlist& bl, off_t ofs, MD5 *hash,
   bool compression_enabled = store->ctx()->_conf->rgw_compression_type != "none";
   if ((ofs > 0 && compressed) ||                                // if previous part was compressed
       (ofs == 0 && compression_enabled)) {   // or it's the first part and flag is set
-    ldout(store->ctx(), 10) << "Compression for rgw is enabled, compress part" << dendl;
+    ldout(store->ctx(), 10) << "Compression for rgw is enabled, compress part " << bl.length() << dendl;
     CompressorRef compressor = Compressor::create(store->ctx(), store->ctx()->_conf->rgw_compression_type);
     if (!compressor.get()) {
+      if (ofs > 0 && compressed) {
+        lderr(store->ctx()) << "Cannot load compressor of type " << store->ctx()->_conf->rgw_compression_type
+                            << " for next part, compression process failed" << dendl;
+        return -EIO;
+      }
       // if compressor isn't available - just do not use it with log warning?
       ldout(store->ctx(), 5) << "Cannot load compressor of type " << store->ctx()->_conf->rgw_compression_type 
                        << "for rgw, check rgw_compression_type config option" << dendl;
@@ -2298,12 +2303,24 @@ int RGWPutObjProcessor_Atomic::handle_data(bufferlist& bl, off_t ofs, MD5 *hash,
       in_bl.claim(bl);
     } else {
       int cr = compressor->compress(bl, in_bl);
-      if (cr != 0) {
+      if (cr < 0) {
+        if (ofs > 0 && compressed) {
+          lderr(store->ctx()) << "Compression failed with exit code " << cr
+                              << " for next part, compression process failed" << dendl;
+          return -EIO;
+        }
         ldout(store->ctx(), 5) << "Compression failed with exit code " << cr << dendl;
         compressed = false;
         in_bl.claim(bl);
       } else {
         compressed = true;
+  
+        compression_block newbl;
+        int bs = blocks.size();
+        newbl.old_ofs = ofs;
+        newbl.new_ofs = bs > 0 ? blocks[bs-1].len + blocks[bs-1].new_ofs : 0;
+        newbl.len = in_bl.length();
+        blocks.push_back(newbl);
       }
     }
   } else {
@@ -2357,6 +2374,7 @@ int RGWPutObjProcessor_Atomic::handle_data(bufferlist& bl, off_t ofs, MD5 *hash,
   bool exclusive = (!write_ofs && immutable_head()); /* immutable head object, need to verify nothing exists there
                                                         we could be racing with another upload, to the same
                                                         object and cleanup can be messy */
+
   int ret = write_data(in_bl, write_ofs, phandle, exclusive);
   if (ret >= 0) { /* we might return, need to clear bl as it was already sent */
     // if (hash) {
@@ -2365,6 +2383,7 @@ int RGWPutObjProcessor_Atomic::handle_data(bufferlist& bl, off_t ofs, MD5 *hash,
     in_bl.clear();
     bl.clear();
   }
+
   return ret;
 }
 
@@ -12094,7 +12113,10 @@ int rgw_compression_info_from_attrset(map<string, bufferlist>& attrs, bool& need
     } catch (buffer::error& err) {
       return -EIO;
     }
-    need_decompress = true;
+    if (cs_info.compression_type != "none")
+      need_decompress = true;
+    else
+      need_decompress = false;
     return 0;
   } else {
     need_decompress = false;
