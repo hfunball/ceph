@@ -52,9 +52,7 @@ class EventSocket {
           ret = -errno;
         else
           ret = 0;
-        break;
       }
-#ifdef HAVE_EVENTFD
       case EVENT_SOCKET_TYPE_EVENTFD:
       {
         uint64_t value = 1;
@@ -63,13 +61,10 @@ class EventSocket {
           ret = -errno;
         else
           ret = 0;
-        break;
       }
-#endif
       default:
       {
         ret = -1;
-        break;
       }
     }
     return ret;
