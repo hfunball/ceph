@@ -53,7 +53,7 @@
     zonegroup default          set default zone group
     zonegroup delete           delete a zone group info
     zonegroup get              show zone group info
-    zonegroup modify           set/clear zonegroup master status
+    zonegroup modify           modify an existing zonegroup
     zonegroup set              set zone group info (requires infile)
     zonegroup rename           rename a zone group
     zonegroup list             list all zone groups set on this cluster
@@ -62,7 +62,7 @@
     zone create                create a new zone
     zone delete                delete a zone
     zone get                   show zone cluster params
-    zone modify                set/clear zone master status
+    zone modify                modify an existing zone
     zone set                   set zone cluster params (requires infile)
     zone list                  list all zones set on this cluster
     pool add                   add an existing pool for data placement
@@ -105,6 +105,7 @@
     replicalog delete          delete replica metadata log entry
     orphans find               init and run search for leaked rados objects (use job-id, pool)
     orphans finish             clean up search for leaked rados objects
+    orphans list-jobs          list the current job-ids for orphans search
   options:
      --tenant=<tenant>         tenant name
      --uid=<id>                user id
@@ -147,7 +148,8 @@
      --realm-id=<realm id>     realm id
      --realm-new-name=<realm new name> realm new name
      --rgw-zonegroup=<zonegroup>   zonegroup name
-     --rgw-zone=<zone>         zone in which radosgw is running
+     --zonegroup-id=<zonegroup id> zonegroup id
+     --rgw-zone=<zone>         name of zone in which radosgw is running
      --zone-id=<zone id>       zone id
      --zone-new-name=<zone>    zone new name
      --source-zone             specify the source zone (for data sync)
@@ -193,6 +195,9 @@
      --num-shards              num of shards to use for keeping the temporary scan info
      --job-id                  set the job id (for orphans find)
      --max-concurrent-ios      maximum concurrent ios for orphans find (default: 32)
+  
+  Orphans list-jobs options:
+     --extra-info              provide extra info in job list
   
     --conf/-c FILE    read configuration from the given configuration file
     --id/-i ID        set ID portion of my name

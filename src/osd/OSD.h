@@ -1060,19 +1060,6 @@ public:
   ~OSDService();
 };
 
-struct C_OSD_SendMessageOnConn: public Context {
-  OSDService *osd;
-  Message *reply;
-  ConnectionRef conn;
-  C_OSD_SendMessageOnConn(
-    OSDService *osd,
-    Message *reply,
-    ConnectionRef conn) : osd(osd), reply(reply), conn(conn) {}
-  void finish(int) {
-    osd->send_message_osd_cluster(reply, conn.get());
-  }
-};
-
 class OSD : public Dispatcher,
 	    public md_config_obs_t {
   /** OSD **/
@@ -1591,6 +1578,20 @@ public:
   struct HeartbeatDispatcher : public Dispatcher {
     OSD *osd;
     explicit HeartbeatDispatcher(OSD *o) : Dispatcher(o->cct), osd(o) {}
+
+    bool ms_can_fast_dispatch_any() const { return true; }
+    bool ms_can_fast_dispatch(Message *m) const {
+      switch (m->get_type()) {
+	case CEPH_MSG_PING:
+	case MSG_OSD_PING:
+          return true;
+	default:
+          return false;
+	}
+    }
+    void ms_fast_dispatch(Message *m) {
+      osd->heartbeat_dispatch(m);
+    }
     bool ms_dispatch(Message *m) {
       return osd->heartbeat_dispatch(m);
     }

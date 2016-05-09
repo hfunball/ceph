@@ -123,8 +123,8 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if(HAVE_XIO)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${Xio_INCLUDE_DIR}")
-  list(APPEND EXTRALIBS ${Xio_LIBRARY} ibverbs rdmacm pthread rt)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${XIO_INCLUDE_DIR}")
+  list(APPEND EXTRALIBS ${XIO_LIBRARY} pthread rt)
 endif(HAVE_XIO)
 
 # sort out which allocator to use
@@ -1006,8 +1006,10 @@ add_library(krbd_objs OBJECT krbd.cc)
 if(${WITH_RBD})
   add_subdirectory(librbd)
   
-  add_executable(rbd-nbd tools/rbd_nbd/rbd-nbd.cc)
-  target_link_libraries(rbd-nbd rbd librados global ${Boost_REGEX_LIBRARY})
+  add_executable(rbd-nbd tools/rbd_nbd/rbd-nbd.cc
+    $<TARGET_OBJECTS:parse_secret_objs>)
+  target_link_libraries(rbd-nbd librbd librados global keyutils
+    ${Boost_REGEX_LIBRARY})
 
   set(rbd_mirror_internal
     tools/rbd_mirror/ClusterWatcher.cc 

@@ -16,7 +16,6 @@ EXTRA_DIST += \
 	etc/sysconfig/SuSEfirewall2.d/services/ceph-osd-mds \
 	udev/50-rbd.rules \
 	udev/95-ceph-osd.rules \
-	udev/95-ceph-osd-alt.rules \
 	share/known_hosts_drop.ceph.com \
 	share/id_dsa_drop.ceph.com \
 	share/id_dsa_drop.ceph.com.pub
@@ -72,7 +71,7 @@ check_SCRIPTS = \
 # "make distclean" both runs this and recurses into src/gtest, if
 # gtest is in DIST_SUBDIRS. Take extra care to not fail when
 # effectively cleaned twice.
-clean-local:
+clean-local::
 	@if test -e src/gmock/Makefile; then \
 	  echo "Making clean in src/gmock"; \
 	  cd src/gmock && $(MAKE) $(AM_MAKEFLAGS) clean; \

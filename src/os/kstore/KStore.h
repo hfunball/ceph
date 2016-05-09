@@ -260,7 +260,7 @@ public:
     Sequencer *parent;
 
     OpSequencer()
-	//set the qlock to to PTHREAD_MUTEX_RECURSIVE mode
+	//set the qlock to PTHREAD_MUTEX_RECURSIVE mode
       : parent(NULL) {
     }
     ~OpSequencer() {
@@ -520,6 +520,10 @@ public:
   }
   uuid_d get_fsid() {
     return fsid;
+  }
+
+  uint64_t estimate_objects_overhead(uint64_t num_objects) override {
+    return num_objects * 300; //assuming per-object overhead is 300 bytes
   }
 
   objectstore_perf_stat_t get_cur_stats() {

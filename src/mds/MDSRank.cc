@@ -251,13 +251,13 @@ void MDSRankDispatcher::shutdown()
 /**
  * Helper for simple callbacks that call a void fn with no args.
  */
-class C_VoidFn : public MDSInternalContext
+class C_MDS_VoidFn : public MDSInternalContext
 {
   typedef void (MDSRank::*fn_ptr)();
   protected:
    fn_ptr fn;
   public:
-  C_VoidFn(MDSRank *mds_, fn_ptr fn_)
+  C_MDS_VoidFn(MDSRank *mds_, fn_ptr fn_)
     : MDSInternalContext(mds_), fn(fn_)
   {
     assert(mds_);
@@ -867,9 +867,6 @@ bool MDSRank::is_daemon_stopping() const
   return stopping;
 }
 
-// FIXME>> this fns are state-machiney, not dispatchy
-// >>>>>
-
 void MDSRank::request_state(MDSMap::DaemonState s)
 {
   dout(3) << "request_state " << ceph_mds_state_name(s) << dendl;
@@ -1093,12 +1090,6 @@ void MDSRank::replay_done()
 {
   dout(1) << "replay_done" << (standby_replaying ? " (as standby)" : "") << dendl;
 
-  if (is_oneshot_replay()) {
-    dout(2) << "hack.  journal looks ok.  shutting down." << dendl;
-    suicide();
-    return;
-  }
-
   if (is_standby_replay()) {
     // The replay was done in standby state, and we are still in that state
     assert(standby_replaying);
@@ -1169,7 +1160,7 @@ void MDSRank::resolve_start()
 
   reopen_log();
 
-  mdcache->resolve_start(new C_VoidFn(this, &MDSRank::resolve_done));
+  mdcache->resolve_start(new C_MDS_VoidFn(this, &MDSRank::resolve_done));
   finish_contexts(g_ceph_context, waiting_for_resolve);
 }
 void MDSRank::resolve_done()
@@ -1186,7 +1177,7 @@ void MDSRank::reconnect_start()
     reopen_log();
   }
 
-  server->reconnect_clients(new C_VoidFn(this, &MDSRank::reconnect_done));
+  server->reconnect_clients(new C_MDS_VoidFn(this, &MDSRank::reconnect_done));
   finish_contexts(g_ceph_context, waiting_for_reconnect);
 }
 void MDSRank::reconnect_done()
@@ -1203,7 +1194,7 @@ void MDSRank::rejoin_joint_start()
 void MDSRank::rejoin_start()
 {
   dout(1) << "rejoin_start" << dendl;
-  mdcache->rejoin_start(new C_VoidFn(this, &MDSRank::rejoin_done));
+  mdcache->rejoin_start(new C_MDS_VoidFn(this, &MDSRank::rejoin_done));
 }
 void MDSRank::rejoin_done()
 {
@@ -1308,7 +1299,7 @@ void MDSRank::boot_create()
 {
   dout(3) << "boot_create" << dendl;
 
-  MDSGatherBuilder fin(g_ceph_context, new C_VoidFn(this, &MDSRank::creating_done));
+  MDSGatherBuilder fin(g_ceph_context, new C_MDS_VoidFn(this, &MDSRank::creating_done));
 
   mdcache->init_layouts();
 
@@ -1376,8 +1367,6 @@ void MDSRank::stopping_done()
   request_state(MDSMap::STATE_STOPPED);
 }
 
-// <<<<<<<<
-
 void MDSRankDispatcher::handle_mds_map(
     MMDSMap *m,
     MDSMap *oldmap)
@@ -1434,7 +1423,7 @@ void MDSRankDispatcher::handle_mds_map(
 
   if (oldstate != state) {
     // update messenger.
-    if (state == MDSMap::STATE_STANDBY_REPLAY || state == MDSMap::STATE_ONESHOT_REPLAY) {
+    if (state == MDSMap::STATE_STANDBY_REPLAY) {
       dout(1) << "handle_mds_map i am now mds." << mds_gid << "." << incarnation
 	      << " replaying mds." << whoami << "." << incarnation << dendl;
       messenger->set_myname(entity_name_t::MDS(mds_gid));
